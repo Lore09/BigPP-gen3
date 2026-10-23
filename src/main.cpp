@@ -21,6 +21,8 @@ uint16_t lastCm = 0;
 uint8_t inRangeCount = 0;
 uint8_t outsideCount = 0;
 uint8_t level = 0;          // current LED level 0-255, slews towards targetLevel()
+bool intro = false;         // turn-on animation running
+unsigned long introStart = 0;
 
 // Returns distance in cm, or 0 if nothing is in range.
 uint16_t readDistanceCm() {
@@ -57,6 +59,8 @@ void updateSensor(unsigned long now) {
     lightOn = !lightOn;
     armed = false;
     setRelay(lightOn);
+    intro = lightOn && INTRO_MS > 0;
+    introStart = now;
   }
 
 #if DEBUG_SERIAL
@@ -94,6 +98,28 @@ void drawGlow(unsigned long now) {
   }
 }
 
+#if INTRO_MS > 0
+// turn-on animation: a comet laps the ring, decelerating, while the glow fades in underneath
+void drawIntro(unsigned long now, unsigned long elapsed) {
+  uint8_t t = elapsed * 255UL / INTRO_MS;
+  uint8_t eased = 255 - scale8(255 - t, 255 - t);       // ease-out: fast start, gentle stop
+  uint8_t mix = ease8InOutCubic(t);                      // 0 = all comet, 255 = all glow
+
+  const uint16_t span = NUM_LEDS * 256;                  // ring length in 1/256 LED steps
+  const uint16_t tail = INTRO_TAIL * 256;
+  uint16_t head = (uint32_t)eased * INTRO_TURNS * span / 255 % span;
+
+  drawGlow(now);
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    uint8_t led = INTRO_REVERSE ? NUM_LEDS - 1 - i : i;
+    uint16_t behind = (head + span - i * 256) % span;    // distance from the comet head
+    uint8_t v = behind < tail ? 255 - (uint32_t)behind * 255 / tail : 0;
+    leds[led].nscale8(mix);
+    leds[led] += CHSV(GLOW_HUE, INTRO_HEAD_SAT, scale8(v, 255 - mix));
+  }
+}
+#endif
+
 void updateLeds(unsigned long now) {
   if (now - lastFrame < FRAME_MS) return;
   lastFrame = now;
@@ -102,6 +128,11 @@ void updateLeds(unsigned long now) {
   if (level < target) level = min(level + FADE_STEP_PER_FRAME, (long)target);
   else if (level > target) level = max(level - FADE_STEP_PER_FRAME, (long)target);
 
+#if INTRO_MS > 0
+  if (intro && now - introStart >= INTRO_MS) intro = false;
+  if (intro) drawIntro(now, now - introStart);
+  else
+#endif
   // glow, scaled by the fade level
   drawGlow(now);
   FastLED.setBrightness((uint16_t)WS_BRIGHTNESS * level / 255);

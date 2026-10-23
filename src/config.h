@@ -8,7 +8,7 @@
 
 // ---------- Trigger behaviour ----------
 #define TRIGGER_DISTANCE_CM   15      // something closer than this toggles the light (off -> on, on -> off)
-#define TRIGGER_CONFIRM      3       // consecutive readings needed to toggle / re-arm (filters glitches)
+#define TRIGGER_CONFIRM      2     // consecutive readings needed to toggle / re-arm (filters glitches)
 #define MEASURE_INTERVAL_MS   60      // HC-SR04 datasheet: >= 60 ms between pings
 #define ECHO_TIMEOUT_US       25000UL // ~4 m; no echo within this = nothing in range
 
@@ -36,6 +36,15 @@
 #define GLOW_MIN          140  // brightness at the bottom of a breath (255 = no breathing)
 #define GLOW_PHASE        40   // phase offset between neighbouring LEDs (0 = all breathe together)
 #define GLOW_HUE_DRIFT    12   // how far the hue wanders around GLOW_HUE (0 = fixed colour)
+
+// ---------- Turn-on animation ----------
+// On each off -> on toggle a comet laps the ring, slowing down, while the glow fades in underneath.
+// Assumes the LEDs are arranged in a circle (LED NUM_LEDS-1 sits next to LED 0).
+#define INTRO_MS          1500 // duration (0 = no animation, straight to the glow)
+#define INTRO_TURNS       2    // laps the comet runs
+#define INTRO_TAIL        4    // tail length in LEDs
+#define INTRO_HEAD_SAT    120  // comet colour saturation (GLOW_HUE); lower = whiter, sparklier head
+#define INTRO_REVERSE     0    // 1 = run the other way round
 
 // ---------- Debug ----------
 #define DEBUG_SERIAL 1 // 1 = print distance/state on the serial monitor (115200)
