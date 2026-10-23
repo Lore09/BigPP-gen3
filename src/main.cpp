@@ -85,12 +85,12 @@ uint8_t targetLevel() {
   return lightOn ? 255 - p : p;
 }
 
-// candle-like flicker: smooth noise per LED, mapped onto the heat palette
-void drawFire(unsigned long now) {
-  uint16_t t = now * FIRE_SPEED;
+// slow breathing glow, phase-shifted per LED, with a gentle noise-driven hue drift
+void drawGlow(unsigned long now) {
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint8_t heat = FIRE_HEAT_MIN + scale8(inoise8(i * FIRE_SPREAD, t), FIRE_HEAT_MAX - FIRE_HEAT_MIN);
-    leds[i] = HeatColor(heat);
+    uint8_t v = beatsin8(GLOW_BPM, GLOW_MIN, 255, 0, i * GLOW_PHASE);
+    uint8_t hue = GLOW_HUE - GLOW_HUE_DRIFT / 2 + scale8(inoise8(i * 50, now / 8), GLOW_HUE_DRIFT);
+    leds[i] = CHSV(hue, GLOW_SAT, v);
   }
 }
 
@@ -102,8 +102,8 @@ void updateLeds(unsigned long now) {
   if (level < target) level = min(level + FADE_STEP_PER_FRAME, (long)target);
   else if (level > target) level = max(level - FADE_STEP_PER_FRAME, (long)target);
 
-  // fire, scaled by the fade level
-  drawFire(now);
+  // glow, scaled by the fade level
+  drawGlow(now);
   FastLED.setBrightness((uint16_t)WS_BRIGHTNESS * level / 255);
   FastLED.show();
 }
